@@ -97,6 +97,6 @@ node scripts/ui-smoke.mjs
 
 ## Что ещё подтвердить перед сдачей
 
-Работа приложения, 35 тестов, PostgreSQL и нативный Nginx проверены. Контейнерные конфигурации прошли `docker compose config`. Из-за недоступности Docker daemon фактические GitLab CE и pipeline пока не запускались. Публичный GitHub-репозиторий не создавался: нужен вход владельца. Точное состояние требований — в **Соответствие_требованиям.md**. Подписи, оценки и отметки руководителя оставлены пустыми; даты дневника являются календарным планом.
+Работа приложения, 35 тестов, PostgreSQL и нативный Nginx проверены. Контейнерные конфигурации прошли `docker compose config`. Из-за недоступности Docker daemon фактические GitLab CE и pipeline пока не запускались. Публичный GitHub-репозиторий опубликован: https://github.com/TortVkusite/FoodShelf . Проверки GitHub Actions запускаются автоматически при push. Точное состояние требований — в **Соответствие_требованиям.md**. Подписи, оценки и отметки руководителя оставлены пустыми; даты дневника являются календарным планом.
 
 Документация: [Angular compatibility](https://angular.dev/reference/versions), [GitLab Docker](https://docs.gitlab.com/install/docker/), [Nginx](https://nginx.org/en/docs/).
