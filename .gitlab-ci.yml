@@ -1,0 +1,55 @@
+stages: [build, test, deploy]
+default:
+  tags: [foodshelf]
+  interruptible: true
+variables:
+  DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+  DOTNET_NOLOGO: '1'
+
+backend_build:
+  stage: build
+  image: mcr.microsoft.com/dotnet/sdk:9.0
+  script:
+    - dotnet restore FoodShelf.sln
+    - dotnet build FoodShelf.sln -c Release --no-restore
+
+frontend_build:
+  stage: build
+  image: node:24.15.0-alpine
+  script:
+    - cd frontend
+    - npm ci
+    - npm run build
+  artifacts:
+    paths: [frontend/dist/foodshelf-web/browser/]
+
+unit_and_api_tests:
+  stage: test
+  image: mcr.microsoft.com/dotnet/sdk:9.0
+  script:
+    - dotnet test FoodShelf.sln -c Release --logger 'trx;LogFileName=tests.trx' --results-directory TestResults
+  artifacts:
+    when: always
+    paths: [TestResults/]
+
+docker_build:
+  stage: test
+  image: docker:cli
+  script:
+    - docker build -t foodshelf:ci-$CI_COMMIT_SHORT_SHA .
+    - docker compose config --quiet
+
+deploy_local:
+  stage: deploy
+  image: docker:cli
+  interruptible: false
+  resource_group: foodshelf-local
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  script:
+    - docker compose -p foodshelf up --build -d
+    - docker compose -p foodshelf ps
+    - docker run --rm --network foodshelf_default --entrypoint sh curlimages/curl:latest -c 'for i in $(seq 1 30); do curl -fsS http://nginx/api/health && exit 0; sleep 2; done; exit 1'
+  environment:
+    name: local
+    url: http://localhost:5088

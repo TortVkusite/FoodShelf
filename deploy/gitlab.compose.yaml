@@ -1,0 +1,28 @@
+name: foodshelf-ci
+services:
+  gitlab:
+    image: gitlab/gitlab-ce:${GITLAB_TAG:-latest}
+    hostname: gitlab.local
+    shm_size: 256m
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url 'http://gitlab.local:8929'
+        gitlab_rails['gitlab_shell_ssh_port'] = 2224
+        prometheus_monitoring['enable'] = false
+    ports:
+      - "127.0.0.1:8929:8929"
+      - "127.0.0.1:2224:22"
+    volumes:
+      - gitlab-config:/etc/gitlab
+      - gitlab-logs:/var/log/gitlab
+      - gitlab-data:/var/opt/gitlab
+  runner:
+    image: gitlab/gitlab-runner:alpine
+    volumes:
+      - runner-config:/etc/gitlab-runner
+      - /var/run/docker.sock:/var/run/docker.sock
+volumes:
+  gitlab-config:
+  gitlab-logs:
+  gitlab-data:
+  runner-config:

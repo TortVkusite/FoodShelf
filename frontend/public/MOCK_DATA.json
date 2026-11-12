@@ -1,0 +1,62 @@
+[
+  {
+    "id": 1001,
+    "first_name": "Алексей",
+    "last_name": "Иванов",
+    "email": "user1@example.com",
+    "address": "Брянск, ул. Ленина, 1",
+    "data": "2026-11-12T09:30:00+03:00",
+    "amount": 1250.0,
+    "status": "Completed"
+  },
+  {
+    "id": 1002,
+    "first_name": "Анна",
+    "last_name": "Петрова",
+    "email": "user2@example.com",
+    "address": "Брянск, ул. Ленина, 2",
+    "data": "2026-11-11T10:30:00+03:00",
+    "amount": 1480.5,
+    "status": "Pending"
+  },
+  {
+    "id": 1003,
+    "first_name": "Илья",
+    "last_name": "Смирнов",
+    "email": "user3@example.com",
+    "address": "Брянск, ул. Ленина, 3",
+    "data": "2026-11-10T11:30:00+03:00",
+    "amount": 1711.0,
+    "status": "Archive"
+  },
+  {
+    "id": 1004,
+    "first_name": "Мария",
+    "last_name": "Орлова",
+    "email": "user4@example.com",
+    "address": "Брянск, ул. Ленина, 4",
+    "data": "2026-11-09T12:30:00+03:00",
+    "amount": 1941.5,
+    "status": "Cancelled"
+  },
+  {
+    "id": 1005,
+    "first_name": "Олег",
+    "last_name": "Зайцев",
+    "email": "user5@example.com",
+    "address": "Брянск, ул. Ленина, 5",
+    "data": "2026-11-08T13:30:00+03:00",
+    "amount": 2172.0,
+    "status": "Completed"
+  },
+  {
+    "id": 1006,
+    "first_name": "Елена",
+    "last_name": "Волкова",
+    "email": "user6@example.com",
+    "address": "Брянск, ул. Ленина, 6",
+    "data": "2026-11-07T14:30:00+03:00",
+    "amount": 2402.5,
+    "status": "Pending"
+  }
+]

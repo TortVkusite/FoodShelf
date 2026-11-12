@@ -1,0 +1,9 @@
+**/bin
+**/obj
+**/*.db*
+.git
+artifacts
+tests
+frontend/node_modules
+frontend/.angular
+frontend/dist

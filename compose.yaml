@@ -1,0 +1,36 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: foodshelf
+      POSTGRES_USER: foodshelf
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-foodshelf_local}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5434}:5432"
+    volumes:
+      - shelf-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U foodshelf -d foodshelf"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  app:
+    build: .
+    environment:
+      ConnectionStrings__Default: Host=db;Database=foodshelf;Username=foodshelf;Password=${POSTGRES_PASSWORD:-foodshelf_local}
+      ASPNETCORE_HTTP_PORTS: 8080
+    expose:
+      - 8080
+    depends_on:
+      db:
+        condition: service_healthy
+  nginx:
+    build:
+      context: .
+      dockerfile: deploy/nginx.Dockerfile
+    ports:
+      - "127.0.0.1:5088:80"
+    depends_on:
+      - app
+volumes:
+  shelf-data:

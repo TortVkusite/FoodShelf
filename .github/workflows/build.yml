@@ -1,0 +1,73 @@
+name: Build and test FoodShelf
+on:
+  push:
+  pull_request:
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: foodshelf
+          POSTGRES_USER: foodshelf
+          POSTGRES_PASSWORD: foodshelf_local
+        ports:
+          - 5434:5432
+        options: >-
+          --health-cmd "pg_isready -U foodshelf -d foodshelf"
+          --health-interval 3s --health-timeout 3s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - run: dotnet restore FoodShelf.sln
+      - run: dotnet test FoodShelf.sln -c Release --no-restore
+      - name: Verify PostgreSQL and stored procedure
+        shell: bash
+        run: |
+          dotnet run --project src/FoodShelf.Api -c Release --no-build -- --urls=http://localhost:5088 > /tmp/foodshelf.log 2>&1 &
+          app_pid=$!
+          trap 'kill "$app_pid" 2>/dev/null || true' EXIT
+          ready=0
+          for i in {1..30}; do
+            if curl -fsS http://localhost:5088/api/health; then ready=1; break; fi
+            sleep 1
+          done
+          if [ "$ready" != 1 ]; then cat /tmp/foodshelf.log; exit 1; fi
+          pwsh -File scripts/SmokeTest.ps1
+          pwsh -File scripts/VerifyReports.ps1
+      - run: docker build -t foodshelf:ci .
+      - name: Verify Docker Compose through Nginx
+        env:
+          POSTGRES_PORT: '5435'
+        shell: bash
+        run: |
+          docker compose up --build -d
+          ready=0
+          for i in {1..60}; do
+            if curl -fsS http://localhost:5088/api/health; then ready=1; break; fi
+            sleep 2
+          done
+          if [ "$ready" != 1 ]; then docker compose logs; exit 1; fi
+          pwsh -File scripts/SmokeTest.ps1
+          pwsh -File scripts/VerifyReports.ps1
+          docker compose ps
+      - name: Save verification logs
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p verification
+          cp /tmp/foodshelf.log verification/native-api.log 2>/dev/null || true
+          docker compose logs --no-color > verification/compose.log 2>&1 || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: verification-logs
+          path: verification/
+      - name: Stop test containers
+        if: always()
+        run: docker compose down
+

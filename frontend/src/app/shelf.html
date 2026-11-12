@@ -1,0 +1,718 @@
+<aside>
+  <a class="brand" href="/"
+    >◈ <span>FoodShelf<small>ПОРЯДОК НА ВАШЕЙ КУХНЕ</small></span></a
+  >
+  <nav>
+    @for (n of nav; track n.id) {
+      <button class="nav" [class.active]="view === n.id" (click)="navigate(n.id)">
+        {{ n.icon }} &nbsp; {{ n.title }}
+      </button>
+    }
+  </nav>
+  <div class="aside-bottom">
+    <span class="dot"></span>{{ demo ? 'Демо · SQLite' : 'PostgreSQL' }}
+    <p>Однобурцев Н.М.<br />Производственная практика</p>
+    <a href="/swagger" target="_blank" rel="noopener">Документация API ↗</a>
+  </div>
+</aside>
+<main>
+  <header>
+    <div class="eyebrow">ДОМАШНИЙ ЗАПАС / {{ title.toUpperCase() }}</div>
+    <span>{{ today | date: 'd.MM.yyyy' }}</span>
+  </header>
+  <div class="heading">
+    <div>
+      <h1>{{ title }}</h1>
+      <p>{{ subtitle }}</p>
+    </div>
+    @if (view !== 'reports') {
+      <button id="add" class="primary" (click)="open()">+ {{ buttonText }}</button>
+    }
+  </div>
+  @if (error) {
+    <div class="form-error" role="alert">
+      {{ error }} <button class="icon" (click)="error = ''" aria-label="Закрыть ошибку">×</button>
+    </div>
+  }
+  @if (loading) {
+    <div class="loading" role="status"><span class="spinner"></span> Загрузка данных…</div>
+  }
+  @if (view === 'products') {
+    <section class="metrics">
+      @for (
+        m of [
+          { id: '', name: 'Всего продуктов', key: 'total', hint: 'позиций в запасе', color: '' },
+          {
+            id: 'expired',
+            name: 'Просрочено',
+            key: 'expired',
+            hint: 'стоит проверить',
+            color: 'red',
+          },
+          {
+            id: 'soon',
+            name: 'Скоро истечёт',
+            key: 'soon',
+            hint: 'сегодня и в ближайшие 3 дня',
+            color: 'amber',
+          },
+          {
+            id: 'fresh',
+            name: 'Всё в порядке',
+            key: 'fresh',
+            hint: 'больше 3 дней в запасе',
+            color: 'green',
+          },
+        ];
+        track m.key
+      ) {
+        <button
+          class="metric {{ m.color }}"
+          [class.active]="status === m.id"
+          (click)="filterStatus(m.id)"
+        >
+          <span>{{ m.name }}</span
+          ><strong [id]="m.key">{{ stats[m.key] }}</strong
+          ><small>{{ m.hint }}</small>
+        </button>
+      }
+    </section>
+    <div class="toolbar">
+      <label class="search"
+        >⌕
+        <input
+          id="search"
+          [(ngModel)]="search"
+          (ngModelChange)="filterProducts()"
+          placeholder="Найти продукт…"
+          aria-label="Поиск продукта" /></label
+      ><select [(ngModel)]="category" (change)="filterProducts()" aria-label="Категория">
+        <option value="">Все категории</option>
+        @for (c of categories; track c.id) {
+          <option [value]="c.id">{{ c.name }}</option>
+        }</select
+      ><select [(ngModel)]="location" (change)="filterProducts()" aria-label="Место хранения">
+        <option value="">Все места</option>
+        @for (l of locations; track l.id) {
+          <option [value]="l.id">{{ l.name }}</option>
+        }</select
+      ><button (click)="showFilters = !showFilters">Фильтры {{ showFilters ? '−' : '+' }}</button>
+    </div>
+    @if (showFilters) {
+      <div class="advanced-filters">
+        <label
+          >Количество от<input
+            type="number"
+            [(ngModel)]="quantityMin"
+            (change)="filterProducts()" /></label
+        ><label
+          >до<input type="number" [(ngModel)]="quantityMax" (change)="filterProducts()" /></label
+        ><label
+          >Единица<select [(ngModel)]="unit" (change)="filterProducts()">
+            <option value="">Все</option>
+            @for (u of ['шт', 'кг', 'г', 'л', 'мл']; track u) {
+              <option>{{ u }}</option>
+            }
+          </select></label
+        ><label
+          >Срок с<input
+            type="date"
+            [(ngModel)]="expirationFrom"
+            (change)="filterProducts()" /></label
+        ><label
+          >по<input type="date" [(ngModel)]="expirationTo" (change)="filterProducts()"
+        /></label>
+      </div>
+    }
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            @for (
+              h of [
+                { key: 'name', text: 'Продукт' },
+                { key: 'quantity', text: 'Количество' },
+                { key: 'storageLocation', text: 'Хранение' },
+                { key: 'expirationDate', text: 'Срок годности' },
+                { key: 'status', text: 'Состояние' },
+              ];
+              track h.key
+            ) {
+              <th>
+                <button class="sort-button" (click)="sort(h.key)">
+                  {{ h.text }}{{ arrow(h.key) }}
+                </button>
+              </th>
+            }
+            <th>Действия</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (p of visible; track p.id) {
+            <tr>
+              <td>
+                <span class="product-name">{{ p.name }}</span
+                ><small>{{ p.category }}</small>
+              </td>
+              <td>{{ p.quantity | number: '1.0-3' }} {{ p.unit }}</td>
+              <td>{{ p.storageLocation }}</td>
+              <td>
+                {{ p.expirationDate | date: 'dd.MM.yyyy'
+                }}<small>{{
+                  p.daysLeft < 0
+                    ? 'Срок истёк'
+                    : p.daysLeft === 0
+                      ? 'Последний день'
+                      : 'Осталось дней: ' + p.daysLeft
+                }}</small>
+              </td>
+              <td>
+                <span class="badge {{ p.status }}">{{ statusLabel(p.status) }}</span>
+              </td>
+              <td>
+                <button class="icon" (click)="open(p)" [attr.aria-label]="'Изменить ' + p.name">
+                  ✎</button
+                ><button
+                  class="icon"
+                  (click)="deleteItem = p"
+                  [attr.aria-label]="'Удалить ' + p.name"
+                >
+                  ×
+                </button>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="6" class="empty">
+                Продуктов нет. Добавьте запись или измените фильтры.
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <div class="bottom-grid">
+      <section>
+        <h3>Запасы по категориям</h3>
+        @for (c of stats.categories; track c.id) {
+          <div class="category-line">
+            <span>{{ c.name }}</span
+            ><span>{{ c.count }}</span>
+            <div class="bar">
+              <span [style.width.%]="stats.total ? (c.count / stats.total) * 100 : 0"></span>
+            </div>
+          </div>
+        }
+      </section>
+      <section class="tip">
+        <div class="eyebrow">ПОЛЕЗНАЯ ПРИВЫЧКА</div>
+        <h3>Сначала — ближайшие сроки</h3>
+        <p>
+          Проверяйте продукты перед приготовлением еды. Указанная дата считается последним днём
+          годности.
+        </p>
+        <button (click)="filterStatus('soon')">Показать истекающие продукты →</button>
+      </section>
+    </div>
+  }
+  @if (view === 'categories' || view === 'locations' || view === 'customers') {
+    <div class="toolbar">
+      <label class="search"
+        >⌕
+        <input
+          [(ngModel)]="search"
+          (ngModelChange)="page = 1"
+          placeholder="Поиск по всем полям"
+          aria-label="Поиск"
+      /></label>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>
+              <button class="sort-button" (click)="sort('id')">ID{{ arrow('id') }}</button>
+            </th>
+            @if (view === 'customers') {
+              @for (
+                h of [
+                  { key: 'firstName', text: 'Имя' },
+                  { key: 'lastName', text: 'Фамилия' },
+                  { key: 'birthDate', text: 'Дата рождения' },
+                  { key: 'email', text: 'Email' },
+                  { key: 'address', text: 'Адрес' },
+                ];
+                track h.key
+              ) {
+                <th>
+                  <button class="sort-button" (click)="sort(h.key)">
+                    {{ h.text }}{{ arrow(h.key) }}
+                  </button>
+                </th>
+              }
+            } @else {
+              <th>
+                <button class="sort-button" (click)="sort('name')">
+                  Название{{ arrow('name') }}
+                </button>
+              </th>
+            }
+            <th>Действия</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of visible; track item.id) {
+            <tr>
+              <td>{{ item.id }}</td>
+              @if (view === 'customers') {
+                <td>{{ item.firstName }}</td>
+                <td>{{ item.lastName }}</td>
+                <td>{{ item.birthDate | date: 'dd.MM.yyyy' }}</td>
+                <td>{{ item.email }}</td>
+                <td>{{ item.address }}</td>
+              } @else {
+                <td>{{ item.name }}</td>
+              }
+              <td>
+                <button (click)="open(item)">Изменить</button>
+                <button (click)="deleteItem = item">Удалить</button>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="7">Записей пока нет.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <p class="muted">
+      Сначала удалите или перенесите связанные записи, чтобы удалить используемый справочник.
+    </p>
+  }
+  @if (view === 'orders') {
+    <div class="order-controls">
+      <label
+        >Источник
+        <select [(ngModel)]="mockMode" (ngModelChange)="changeSource()">
+          <option [ngValue]="true">MOCK_DATA.json</option>
+          <option [ngValue]="false">REST API / база данных</option>
+        </select></label
+      ><label><input type="checkbox" [(ngModel)]="showEmail" /> Email</label
+      ><label><input type="checkbox" [(ngModel)]="showAddress" /> Address</label>
+      @if (mockMode) {
+        <button (click)="resetMock()">Сбросить примеры</button>
+      }
+    </div>
+    <p class="muted">
+      {{
+        mockMode
+          ? 'Примеры загружаются Ajax-запросом из MOCK_DATA.json. Изменения сохраняются в этом браузере.'
+          : 'Заказы сохраняются на сервере. Сначала добавьте клиентов.'
+      }}
+    </p>
+    <div class="toolbar">
+      <label class="search"
+        >⌕
+        <input
+          [(ngModel)]="search"
+          (ngModelChange)="page = 1"
+          placeholder="Поиск по всем полям заказа"
+          aria-label="Поиск заказов"
+      /></label>
+    </div>
+    <div class="table-wrap orders">
+      <div class="orders-title">
+        <h3>
+          Latest Orders <small>{{ orders.length }} total</small>
+        </h3>
+        <span class="muted">Нажмите заголовок для сортировки</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            @for (
+              h of [
+                { key: 'id', text: 'Order ID' },
+                { key: 'customer', text: 'Customer' },
+                { key: 'data', text: 'Date' },
+                { key: 'amount', text: 'Amount' },
+                { key: 'status', text: 'Status' },
+              ];
+              track h.key
+            ) {
+              <th
+                [attr.aria-sort]="
+                  sortKey === h.key ? (sortDirection === 1 ? 'ascending' : 'descending') : 'none'
+                "
+              >
+                <button class="sort-button" (click)="sort(h.key)">
+                  {{ h.text }}{{ arrow(h.key) }}
+                </button>
+              </th>
+            }
+            @if (showEmail) {
+              <th>
+                <button class="sort-button" (click)="sort('email')">
+                  Email{{ arrow('email') }}
+                </button>
+              </th>
+            }
+            @if (showAddress) {
+              <th>
+                <button class="sort-button" (click)="sort('address')">
+                  Address{{ arrow('address') }}
+                </button>
+              </th>
+            }
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (o of visible; track o.id) {
+            <tr
+              [class.archived]="o.status === 'Archive'"
+              [class.clickable]="o.status !== 'Archive'"
+              (click)="open(o)"
+              (keydown.enter)="open(o)"
+              [attr.tabindex]="o.status === 'Archive' ? null : 0"
+            >
+              <td>{{ o.id }}</td>
+              <td>{{ o.first_name }} {{ o.last_name }}</td>
+              <td>{{ o.data | date: 'dd.MM.yyyy HH:mm' }}</td>
+              <td>{{ o.amount | number: '1.2-2' }}</td>
+              <td>
+                <span class="badge {{ o.status }}">{{ statusLabel(o.status) }}</span>
+              </td>
+              @if (showEmail) {
+                <td>{{ o.email }}</td>
+              }
+              @if (showAddress) {
+                <td>{{ o.address }}</td>
+              }
+              <td>
+                <button
+                  class="icon"
+                  [disabled]="o.status === 'Archive'"
+                  (click)="$event.stopPropagation(); open(o)"
+                  [attr.aria-label]="'Изменить заказ ' + o.id"
+                >
+                  ✎</button
+                ><button
+                  class="icon"
+                  (click)="$event.stopPropagation(); deleteItem = o"
+                  [attr.aria-label]="'Удалить заказ ' + o.id"
+                >
+                  ×
+                </button>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="8">Заказы не найдены.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+  @if (view === 'reports') {
+    <div class="report-grid">
+      <section class="table-wrap">
+        <h3>Запасы по категориям</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Категория</th>
+              <th>Позиций</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (c of inventory; track c.categoryId) {
+              <tr>
+                <td>{{ c.name }}</td>
+                <td>{{ c.productCount }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </section>
+      <section class="table-wrap">
+        <h3>Заказы в день рождения</h3>
+        <p class="muted">Выполненные заказы за все годы по дню и месяцу рождения.</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Клиент</th>
+              <th>Сумма</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (c of birthdays; track c.customerId) {
+              <tr>
+                <td>{{ c.firstName }} {{ c.lastName }}</td>
+                <td>{{ c.total | number: '1.2-2' }}</td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="2">Нет клиентов.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </section>
+      <section class="table-wrap">
+        <h3>Средний чек по часам</h3>
+        <p class="muted">
+          24 интервала по московскому времени, только выполненные заказы, по убыванию среднего чека.
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>Час</th>
+              <th>Средний чек</th>
+              <th>Заказов</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (h of hourly; track h.hour) {
+              <tr>
+                <td>{{ h.hour | number: '2.0-0' }}:00–{{ h.hour + 1 | number: '2.0-0' }}:00</td>
+                <td>{{ h.average | number: '1.2-2' }}</td>
+                <td>{{ h.count }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </section>
+    </div>
+  }
+  @if (view !== 'reports') {
+    <footer class="pagination">
+      <span>Всего: {{ filtered.length }} · Страница {{ page }} из {{ totalPages }}</span>
+      <div>
+        <label
+          >На странице
+          <select [(ngModel)]="pageSize" (change)="page = 1">
+            @for (size of [5, 10, 25, 50]; track size) {
+              <option [ngValue]="size">{{ size }}</option>
+            }
+          </select></label
+        >
+        <button [disabled]="page <= 1" (click)="page = page - 1" aria-label="Предыдущая страница">
+          ←
+        </button>
+        <button
+          [disabled]="page >= totalPages"
+          (click)="page = page + 1"
+          aria-label="Следующая страница"
+        >
+          →
+        </button>
+      </div>
+    </footer>
+  }
+  <p class="footnote">FoodShelf · Учёт продуктов и сроков годности</p>
+</main>
+@if (modal) {
+  <div class="modal-backdrop" (click)="modal = false">
+    <section
+      class="editor"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="editor-title"
+      (click)="$event.stopPropagation()"
+      (keydown.escape)="modal = false"
+    >
+      <form #editForm="ngForm" (ngSubmit)="save(editForm)">
+        <div class="dialog-heading">
+          <h2 id="editor-title">{{ form.id ? 'Изменить запись' : buttonText }}</h2>
+          <button type="button" class="icon" (click)="modal = false" aria-label="Закрыть">×</button>
+        </div>
+        @if (formError) {
+          <div class="form-error" role="alert">{{ formError }}</div>
+        }
+        @if (view === 'products' || view === 'categories' || view === 'locations') {
+          <label
+            >Название<input
+              id="name"
+              name="name"
+              [(ngModel)]="form.name"
+              required
+              [maxlength]="view === 'products' ? 120 : 60"
+              pattern=".*\S.*"
+              autofocus
+          /></label>
+        }
+        @if (view === 'products') {
+          <div class="form-grid">
+            <label
+              >Количество<input
+                id="quantity"
+                name="quantity"
+                type="number"
+                [(ngModel)]="form.quantity"
+                min="0.001"
+                max="1000000"
+                step="0.001"
+                required /></label
+            ><label
+              >Единица<select name="unit" [(ngModel)]="form.unit">
+                @for (u of ['шт', 'кг', 'г', 'л', 'мл']; track u) {
+                  <option>{{ u }}</option>
+                }
+              </select></label
+            >
+          </div>
+          <label
+            >Годен до<input
+              name="expiration"
+              type="date"
+              [(ngModel)]="form.expirationDate"
+              required
+          /></label>
+          <div class="form-grid">
+            <label
+              >Категория<select name="category" [(ngModel)]="form.categoryId" required>
+                @for (c of categories; track c.id) {
+                  <option [ngValue]="c.id">{{ c.name }}</option>
+                }
+              </select></label
+            ><label
+              >Место хранения<select name="location" [(ngModel)]="form.storageLocationId" required>
+                @for (l of locations; track l.id) {
+                  <option [ngValue]="l.id">{{ l.name }}</option>
+                }
+              </select></label
+            >
+          </div>
+        }
+        @if (view === 'customers') {
+          <div class="form-grid">
+            <label
+              >Имя<input
+                name="firstName"
+                [(ngModel)]="form.firstName"
+                required
+                maxlength="60"
+                pattern=".*\S.*" /></label
+            ><label
+              >Фамилия<input
+                name="lastName"
+                [(ngModel)]="form.lastName"
+                required
+                maxlength="60"
+                pattern=".*\S.*"
+            /></label>
+          </div>
+          <label
+            >Дата рождения<input
+              name="birthDate"
+              type="date"
+              [(ngModel)]="form.birthDate"
+              min="1900-01-01"
+              [max]="today"
+              required
+          /></label>
+        }
+        @if (view === 'customers' || (view === 'orders' && mockMode)) {
+          @if (view === 'orders') {
+            <div class="form-grid">
+              <label
+                >First Name<input
+                  name="first_name"
+                  [(ngModel)]="form.first_name"
+                  required
+                  maxlength="60"
+                  pattern=".*\S.*" /></label
+              ><label
+                >Last Name<input
+                  name="last_name"
+                  [(ngModel)]="form.last_name"
+                  required
+                  maxlength="60"
+                  pattern=".*\S.*"
+              /></label>
+            </div>
+          }
+          <label
+            >Email<input
+              name="email"
+              type="email"
+              email
+              [(ngModel)]="form.email"
+              required
+              maxlength="120" /></label
+          ><label
+            >Адрес<input
+              name="address"
+              [(ngModel)]="form.address"
+              required
+              maxlength="250"
+              pattern=".*\S.*"
+          /></label>
+        }
+        @if (view === 'orders') {
+          <label>Order ID<input name="orderId" [value]="form.id || 'Назначается автоматически'" readonly /></label>
+          @if (!mockMode) {
+            <label
+              >Клиент<select name="customerId" [(ngModel)]="form.customerId" required>
+                @for (c of customers; track c.id) {
+                  <option [ngValue]="c.id">{{ c.firstName }} {{ c.lastName }}</option>
+                }
+              </select></label
+            >
+          }
+          <div class="form-grid">
+            <label
+              >Date<input
+                name="data"
+                type="datetime-local"
+                [(ngModel)]="form.data"
+                required /></label
+            ><label
+              >Amount<input
+                name="amount"
+                type="number"
+                [(ngModel)]="form.amount"
+                min="0.01"
+                max="1000000000"
+                step="0.01"
+                required
+            /></label>
+          </div>
+          <label
+            >Status<select name="status" [(ngModel)]="form.status">
+              @for (s of ['Pending', 'Completed', 'Cancelled', 'Archive']; track s) {
+                <option [value]="s">{{ statusLabel(s) }}</option>
+              }
+            </select></label
+          >
+        }
+        <div class="dialog-actions">
+          <button type="button" (click)="modal = false">Отмена</button
+          ><button id="save" type="submit" class="primary" [disabled]="saving">
+            {{ saving ? 'Сохранение…' : 'Сохранить' }}
+          </button>
+        </div>
+      </form>
+    </section>
+  </div>
+}
+@if (deleteItem) {
+  <div class="modal-backdrop">
+    <section class="editor" role="dialog" aria-modal="true" aria-label="Подтверждение удаления">
+      <h2>Удалить запись?</h2>
+      <p>{{ deleteItem.name || deleteItem.firstName || 'Заказ №' + deleteItem.id }}</p>
+      <div class="dialog-actions">
+        <button (click)="deleteItem = null">Отмена</button
+        ><button class="danger" id="confirm-delete" [disabled]="saving" (click)="remove()">
+          Удалить
+        </button>
+      </div>
+    </section>
+  </div>
+}
+@if (message) {
+  <div id="toast" role="status">{{ message }}</div>
+}
